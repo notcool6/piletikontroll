@@ -114,4 +114,5 @@ checkAuth(function fetchUserDone( data ) {
     })
     .fail(function userFail( data ) {
         console.log(data)
+    })
 })
