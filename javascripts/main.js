@@ -57,6 +57,7 @@ var checkAuth = function checkAuth(successCallback) {
             var my_random_string = Math.random().toString(35).slice(2,39)
             my_auth_string = Math.random().toString(35).slice(2,39)
 
+            console.log(my_random_string)
             window.sessionStorage.setItem('my_random_string', my_random_string)
             window.sessionStorage.setItem('my_auth_string', my_auth_string)
 
