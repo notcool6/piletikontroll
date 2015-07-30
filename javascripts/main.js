@@ -18,9 +18,10 @@ var configuration = {
 }
 
 configuration['ENTU_API'] = configuration.ENTU_URI + 'api2/'
-configuration['ENTU_API_AUTH'] = configuration.ENTU_API + 'user/auth'
-configuration['ENTU_API_USER'] = configuration.ENTU_API + 'user'
 configuration['ENTU_API_ENTITY'] = configuration.ENTU_API + 'entity'
+configuration['ENTU_API_TERMINALS'] = configuration.ENTU_API_ENTITY + '?definition=terminal'
+configuration['TICKETSTATUS_URL'] = 'http://84.50.247.234:8072/ticketstatus.php'
+
 
 
 var user_data = ''
@@ -36,84 +37,56 @@ $('#submit_btn').click(function(event) {
 })
 
 
-var checkAuth = function checkAuth(successCallback) {
-
-    $.ajax({
-        'url': configuration.ENTU_API_USER,
-        'headers': {
-            'X-Auth-UserId': window.sessionStorage.getItem('ENTU_USER_ID'),
-            'X-Auth-Token': window.sessionStorage.getItem('ENTU_SESSION_KEY')
-        }
+$.ajax({'url': configuration.ENTU_API_TERMINALS })
+.done(function Ok( data ) {
+    result = data.result
+    result.forEach(function terminalLoop(t) {
+        console.log(t)
+        var new_terminal = $('<option>').text(t.name)
+        $('#select_terminal').append(new_terminal)
+        $.ajax({'url': configuration.ENTU_API_ENTITY + '-' + t.id })
+        .done(function Ok( data ) {
+            var terminal_id = data.result.properties.id.values[0].value
+            new_terminal.attr('value', terminal_id);
+        })
+        .fail(function Fail( data ) {
+            console.log(data)
+        })
     })
-    .done(function userOk( data ) {
-        successCallback(data)
-    })
-    .fail(function userFail( data ) {
-        console.log(data)
+})
+.fail(function Fail( data ) {
+    console.log(data)
+})
 
-        var my_auth_string = window.sessionStorage.getItem('my_auth_string')
+$('#select_terminal').change(function(event) {
+    $('#select_terminal_row').addClass('hidden')
+    $('#terminal_name').text($('option[value="' + $('#select_terminal').val() + '"]').text())
+    $('#terminal_name_row').removeClass('hidden')
+    $('#ticket_check_row').removeClass('hidden')
+    console.log($('#select_terminal').val())
+    console.log($('option[value="' + $('#select_terminal').val() + '"]').text())
+})
 
-        if (window.location.hash !== '#' + my_auth_string) {
-            var my_random_string = Math.random().toString(35).slice(2,39)
-            my_auth_string = Math.random().toString(35).slice(2,39)
+var ticket_q = ''
+$('#barcode_input').change(function(event) {
+    $('#ticket_id_input').val('')
+    ticket_q = 'ticket=' + $('#barcode_input').val()
+})
+$('#ticket_id_input').change(function(event) {
+    $('#barcode_input').val('')
+    ticket_q = 'ticket_id=' + $('#ticket_id_input').val()
+})
+$('#submit_ticket').click(function(event) {
+    console.log(configuration.TICKETSTATUS_URL + '?term=' + $('#select_terminal').val() + '&op=T&' + ticket_q)
+        $.ajax({'url': configuration.TICKETSTATUS_URL + '?term=' + $('#select_terminal').val() + '&op=T&' + ticket_q })
+// ?term=710227&op=T&ticket=43200708698504'
+        .done(function Ok( data ) {
+            console.log(data)
+            $('#result_row').text(data)
+        })
+        .fail(function Fail( data ) {
+            console.log(data)
+        })
 
-            console.log(my_random_string)
-            window.sessionStorage.setItem('my_random_string', my_random_string)
-            window.sessionStorage.setItem('my_auth_string', my_auth_string)
-
-            var redirect_url = window.location.protocol + '//'
-                                + window.location.hostname
-                                + window.location.pathname
-                                + "#" + my_auth_string
-
-            $.post( configuration.ENTU_API_AUTH, {'state': window.sessionStorage.getItem('my_random_string'), 'redirect_url': redirect_url} )
-            .fail(function authFail( data ) {
-                console.log(data)
-            })
-            .done(function authDone( data ) {
-                if (window.sessionStorage.getItem('my_random_string') !== data.result.state) {
-                    console.log(window.sessionStorage.getItem('my_random_string'))
-                    console.log(data.result.state)
-                    alert('Security breach!')
-                    return
-                }
-                console.log(data)
-                window.sessionStorage.setItem('auth_url', data.result.auth_url)
-                window.location.assign(data.result.auth_url)
-            })
-        } else { // window.location.hash === 'authenticated'
-            $.post( window.sessionStorage.getItem('auth_url'), {'state': window.sessionStorage.getItem('my_random_string')} )
-            .fail(function authFail( data ) {
-                console.log(data)
-            })
-            .done(function authDone( data ) {
-                console.log(data)
-                window.sessionStorage.setItem('ENTU_USER_ID', data.result.user.id)
-                window.sessionStorage.setItem('ENTU_SESSION_KEY', data.result.user.session_key)
-
-                var redirect_url = window.location.protocol + '//'
-                            + window.location.hostname
-                            + window.location.pathname
-                window.location.assign(redirect_url)
-            })
-        }
-    })
-}
-
-checkAuth(function fetchUserDone( data ) {
-    $('#user_email').text(data.result.name)
-    $.ajax({
-        'url': configuration.ENTU_API_ENTITY + '-' + data.result.id,
-        'headers': {
-            'X-Auth-UserId': window.sessionStorage.getItem('ENTU_USER_ID'),
-            'X-Auth-Token': window.sessionStorage.getItem('ENTU_SESSION_KEY')
-        }
-    })
-    .done(function userOk( data ) {
-        user_data = data.result
-        console.log(user_data)
-    })
-    .fail(function userFail( data ) {
-        console.log(data)
-    })
+    return false
 })
